@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ScalpScan Pro v6.7 - Validación Volumen Multi-TF</title>
+<title>ScalpScan Pro v6.9 + Hyperliquid - Modo Agresivo (Validación Volumen Multi-TF incl. PREPARING)</title>
 <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Bebas+Neue&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
   :root {
@@ -229,7 +229,7 @@
 <div class="header">
   <div class="logo">SCALP<span>SCAN</span> PRO</div>
   <div class="badges">
-    <div class="badge badge-v">v6.7 · VOL MTF FIX</div>
+    <div class="badge badge-v">v6.9 · MODO AGRESIVO · +HL</div>
     <div class="badge badge-tf">4H→1H→15M · TOP 50</div>
   </div>
 </div>
@@ -246,23 +246,27 @@
     <button class="alert-btn" id="alertAll" onclick="setAlertMode('all')">TODO</button>
   </div>
   <div class="stats">
-    <div class="stat"><div class="stat-val" id="sElite" style="color:var(--elite)">0</div><div class="stat-lbl">ELITE</div></div>
-    <div class="stat"><div class="stat-val" id="sSuper" style="color:#ffaa44">0</div><div class="stat-lbl">SUPER</div></div>
-    <div class="stat"><div class="stat-val" id="sPrep" style="color:var(--preparing)">0</div><div class="stat-lbl">PREP</div></div>
-    <div class="stat"><div class="stat-val" id="sTotal" style="color:var(--accent)">0</div><div class="stat-lbl">TOTAL</div></div>
+    <div class="stat" onclick="selectFilterByName('elite')" style="cursor:pointer;"><div class="stat-val" id="sElite" style="color:var(--elite)">0</div><div class="stat-lbl">ELITE</div></div>
+    <div class="stat" onclick="selectFilterByName('super')" style="cursor:pointer;"><div class="stat-val" id="sSuper" style="color:#ffaa44">0</div><div class="stat-lbl">SUPER</div></div>
+    <div class="stat" onclick="selectFilterByName('preparing')" style="cursor:pointer;"><div class="stat-val" id="sPrep" style="color:var(--preparing)">0</div><div class="stat-lbl">PREP</div></div>
+    <div class="stat" onclick="selectFilterByName('fresh')" style="cursor:pointer;"><div class="stat-val" id="sFresh" style="color:#4ade80">0</div><div class="stat-lbl">FRESCO</div></div>
+    <div class="stat" onclick="selectFilterByName('twolayer')" style="cursor:pointer;"><div class="stat-val" id="s2L" style="color:#38bdf8">0</div><div class="stat-lbl">2 CAPAS</div></div>
+    <div class="stat" onclick="selectFilterByName('all')" style="cursor:pointer;"><div class="stat-val" id="sTotal" style="color:var(--accent)">0</div><div class="stat-lbl">TOTAL</div></div>
   </div>
 </div>
 
 <div class="progress-bar"><div class="progress-fill" id="prog"></div></div>
 
 <div class="filters">
-  <button class="fbtn elite active" onclick="setFilter('elite',this)">👑 ELITE</button>
-  <button class="fbtn prep" onclick="setFilter('preparing',this)">⏳ PREPARING</button>
-  <button class="fbtn super" onclick="setFilter('super',this)">⭐ SUPER</button>
-  <button class="fbtn" onclick="setFilter('confirmed',this)">✅ 1H CONF</button>
-  <button class="fbtn" onclick="setFilter('signals',this)">🎯 SEÑALES</button>
-  <button class="fbtn" onclick="setFilter('all',this)">TODOS</button>
-  <span class="filter-rule">🔒 4H OBLIGATORIO · VOL 4H+1H ≥1.0x</span>
+  <button class="fbtn elite active" data-filter="elite" onclick="setFilter('elite',this)">👑 ELITE</button>
+  <button class="fbtn prep" data-filter="preparing" onclick="setFilter('preparing',this)">⏳ PREPARING</button>
+  <button class="fbtn super" data-filter="super" onclick="setFilter('super',this)">⭐ SUPER</button>
+  <button class="fbtn" data-filter="fresh" onclick="setFilter('fresh',this)" style="border-color:#4ade80;color:#4ade80;">🌱 FRESCO</button>
+  <button class="fbtn" data-filter="twolayer" onclick="setFilter('twolayer',this)" style="border-color:#38bdf8;color:#38bdf8;">🎯 2 CAPAS</button>
+  <button class="fbtn" data-filter="confirmed" onclick="setFilter('confirmed',this)">✅ 1H CONF</button>
+  <button class="fbtn" data-filter="signals" onclick="setFilter('signals',this)">🎯 SEÑALES</button>
+  <button class="fbtn" data-filter="all" onclick="setFilter('all',this)">TODOS</button>
+  <span class="filter-rule">🔒 4H OBLIGATORIO · VOL 4H+1H ≥0.7x (PREP ≥0.3x/0.5x) · AGRESIVO</span>
 </div>
 
 <div class="capbar">
@@ -317,7 +321,7 @@
 
 <div class="footer">
   <span id="tsLeft">—</span>
-  <span>BINANCE · 4H→1H→15M · Top 50 · v6.7 · 4H OBLIGATORIO · VOL MULTI-TF ≥1.0x · ⏳ EARLY WARNING · 📊 Click tarjeta para gráfico</span>
+  <span>BINANCE · 4H→1H→15M · Top 50 · v6.9 MODO AGRESIVO · 4H OBLIGATORIO · VOL MULTI-TF (CONFIRMADAS ≥0.7x · PREP ≥0.3x/0.5x) · ⏳ EARLY WARNING · 📊 Click tarjeta para gráfico</span>
 </div>
 
 <!-- CHART MODAL -->
@@ -373,8 +377,22 @@ let historyOpen = true;
 const htfCache = {};
 const HTF_CACHE_TTL = 15 * 60 * 1000;
 
-// Umbral mínimo de volumen exigido en 4H y 1H para cualquier señal confirmada/SUPER/ELITE
-const MTF_MIN_VOL = 1.0;
+// ============================================================
+// MODO AGRESIVO — umbrales relajados a propósito para generar más señales,
+// sincronizados 1:1 con scan.js (bot de Telegram). Esto sube ruido/falsos
+// positivos; es el trade-off pedido.
+// ============================================================
+const MTF_MIN_VOL     = 0.7;   // antes 1.0
+const PREP_MIN_VOL_4H = 0.3;   // antes 0.5
+const PREP_MIN_VOL_1H = 0.5;   // antes 0.8
+
+// FIX E (paridad con scan.js) — earlyWarning() genera máx. 5 triggers,
+// evalPair() puntúa sobre 9 condiciones. Antes toda la UI mostraba "/9"
+// también para PREPARING, infravalorando su score real (un 2/9 real de
+// PREPARING es en verdad 2 de 5, un 40%, no un 22%).
+const CONFIRMED_MAX_SCORE = 9;
+const PREP_MAX_SCORE = 5;
+function scoreMaxFor(isPrepFlag) { return isPrepFlag ? PREP_MAX_SCORE : CONFIRMED_MAX_SCORE; }
 
 // ============================================================
 // INDICADORES
@@ -436,9 +454,90 @@ function trendGeneric(candles) {
 }
 
 // ============================================================
-// EARLY WARNING — detecta señal a punto de formarse
+// FRESCO — 3 filtros independientes (no correlacionados entre sí)
+// A diferencia de RSI/StochK/EMA (todos derivados del mismo precio de
+// cierre y por tanto redundantes entre sí), FRESCO usa 3 fuentes de
+// evidencia distintas:
+//   1) Sesgo estructural — swings de máximos/mínimos en 4H (no medias)
+//   2) Disparador — reacción de precio (rechazo) en un nivel real del 1H
+//   3) Participación — volumen real (no derivado del precio)
+// Esto es intencionadamente independiente del sistema ELITE/SUPER/
+// PREPARING existente: es un filtro adicional, no un reemplazo.
 // ============================================================
-function earlyWarning(closes, candles, htf1h, htf4h) {
+function findSwings(candles, leftRight = 2) {
+  const highs = [], lows = [];
+  for (let i = leftRight; i < candles.length - leftRight; i++) {
+    const h = parseFloat(candles[i][2]), l = parseFloat(candles[i][3]);
+    let isHigh = true, isLow = true;
+    for (let j = i - leftRight; j <= i + leftRight; j++) {
+      if (j === i) continue;
+      if (parseFloat(candles[j][2]) >= h) isHigh = false;
+      if (parseFloat(candles[j][3]) <= l) isLow = false;
+    }
+    if (isHigh) highs.push({ idx: i, price: h });
+    if (isLow) lows.push({ idx: i, price: l });
+  }
+  return { highs, lows };
+}
+function structuralBias(candles) {
+  const { highs, lows } = findSwings(candles, 2);
+  if (highs.length < 2 || lows.length < 2) return 'neutral';
+  const lastH = highs[highs.length - 1], prevH = highs[highs.length - 2];
+  const lastL = lows[lows.length - 1], prevL = lows[lows.length - 2];
+  if (lastH.price > prevH.price && lastL.price > prevL.price) return 'bull';
+  if (lastH.price < prevH.price && lastL.price < prevL.price) return 'bear';
+  return 'neutral';
+}
+function nearestLevels(candles, currentPrice, maxDistPct = 3) {
+  const { highs, lows } = findSwings(candles, 2);
+  const above = highs.filter(h => h.price > currentPrice).sort((a, b) => a.price - b.price);
+  const below = lows.filter(l => l.price < currentPrice).sort((a, b) => b.price - a.price);
+  const resistance = above.length ? above[0] : null;
+  const support = below.length ? below[0] : null;
+  const resOk = resistance && ((resistance.price - currentPrice) / currentPrice * 100) <= maxDistPct;
+  const supOk = support && ((currentPrice - support.price) / currentPrice * 100) <= maxDistPct;
+  return { resistance: resOk ? resistance : null, support: supOk ? support : null };
+}
+function detectRejection(candles, level, dir, lookback = 3) {
+  const n = candles.length;
+  for (let i = n - 1; i >= Math.max(0, n - lookback); i--) {
+    const c = candles[i];
+    const o = parseFloat(c[1]), h = parseFloat(c[2]), l = parseFloat(c[3]), cl = parseFloat(c[4]);
+    const range = h - l; if (range <= 0) continue;
+    if (dir === 'short') {
+      const touched = h >= level.price * 0.999;
+      const rejected = cl < level.price && (h - cl) / range > 0.4 && cl < o;
+      if (touched && rejected) return true;
+    } else {
+      const touched = l <= level.price * 1.001;
+      const rejected = cl > level.price && (cl - l) / range > 0.4 && cl > o;
+      if (touched && rejected) return true;
+    }
+  }
+  return false;
+}
+function freshSignal(closes, candles, struct4h, levels1h, vol1h, vol4h) {
+  const price = closes[closes.length - 1];
+  const vol = volSpikeCalc(candles);
+  const volOk = vol.ratio >= 1.0 && vol1h >= MTF_MIN_VOL && vol4h >= MTF_MIN_VOL;
+  if (!volOk) return null;
+  if (struct4h === 'neutral') return null;
+  if (struct4h === 'bear' && levels1h.resistance && detectRejection(candles, levels1h.resistance, 'short')) {
+    return { signal: 'fresh_short', level: levels1h.resistance.price, price, vol: vol.ratio };
+  }
+  if (struct4h === 'bull' && levels1h.support && detectRejection(candles, levels1h.support, 'long')) {
+    return { signal: 'fresh_long', level: levels1h.support.price, price, vol: vol.ratio };
+  }
+  return null;
+}
+
+// ============================================================
+// EARLY WARNING — detecta señal a punto de formarse
+// FIX v6.8 — recibe vol1h/vol4h y aplica un gate de volumen MTF.
+// FIX D (MODO AGRESIVO, paridad con scan.js) — ventana RSI ampliada
+// (antes 46-52/48-54) para detectar el giro un poco antes.
+// ============================================================
+function earlyWarning(closes, candles, htf1h, htf4h, vol1h, vol4h) {
   const p = closes[closes.length - 1];
   const e9 = ema(closes, 9), e21 = ema(closes, 21), e50 = ema(closes, 50);
   const prev = closes.slice(0, -1);
@@ -454,8 +553,9 @@ function earlyWarning(closes, candles, htf1h, htf4h) {
   const emaCrossingLong  = pe9 <= pe21 && e9 > e21 * 0.998 && e9 < e21 * 1.005; // inminente cruce alcista
   const emaCrossingShort = pe9 >= pe21 && e9 < e21 * 1.002 && e9 > e21 * 0.995; // inminente cruce bajista
 
-  const rsiNearLong  = r >= 46 && r <= 52; // RSI a punto de cruzar 50 al alza
-  const rsiNearShort = r >= 48 && r <= 54; // RSI a punto de cruzar 50 a la baja
+  // FIX D (MODO AGRESIVO) — antes 46-52 / 48-54
+  const rsiNearLong  = r >= 44 && r <= 54; // RSI a punto de cruzar 50 al alza
+  const rsiNearShort = r >= 46 && r <= 56; // RSI a punto de cruzar 50 a la baja
 
   const sqz = bb ? bb.std / bb.mid < 0.015 : false; // BB apretando
   const volBuilding = vol.ratio >= 1.2 && vol.ratio < 2.0; // volumen creciendo
@@ -463,17 +563,18 @@ function earlyWarning(closes, candles, htf1h, htf4h) {
   const stochCrossingLong  = psk.k !== null && sk.k !== null && psk.k < psk.d && sk.k >= sk.d && sk.k < 40;
   const stochCrossingShort = psk.k !== null && sk.k !== null && psk.k > psk.d && sk.k <= sk.d && sk.k > 60;
 
-  // FIX v6.4.1 — Filtros de calidad para PREPARING:
-  // Fix 1: Volumen mínimo 1.0x — sin volumen no hay señal real
+  // Fix 1: Volumen mínimo 1.0x en 15M — sin volumen no hay señal real
   if (vol.ratio < 1.0) return null;
 
+  // FIX v6.8 — Fix 1b: Gate de volumen MTF (4H y 1H), umbral agresivo.
+  const v1h = typeof vol1h === 'number' ? vol1h : 0;
+  const v4h = typeof vol4h === 'number' ? vol4h : 0;
+  if (v4h < PREP_MIN_VOL_4H || v1h < PREP_MIN_VOL_1H) return null;
+
   // Fix 2: StochK extremo — no entrar cuando ya está sobrecomprado/sobrevendido
-  // PREP LONG: StochK debe ser < 70 (no sobrecomprado)
-  // PREP SHORT: StochK debe ser > 30 (no sobrevendido)
   if (sk.k !== null) {
     const prepLongStochOk  = sk.k < 70;
     const prepShortStochOk = sk.k > 30;
-    // Pre-check: si va a ser LONG y stoch es alto, o SHORT y stoch es bajo → salir
     const goingLong  = htf4h === 'bull';
     const goingShort = htf4h === 'bear';
     if (goingLong  && !prepLongStochOk)  return null;
@@ -488,7 +589,6 @@ function earlyWarning(closes, candles, htf1h, htf4h) {
 
   const direction = prepLong ? 'preparing_long' : 'preparing_short';
 
-  // Calcular cuántos triggers se activan
   let triggers = [];
   if (prepLong) {
     if (emaCrossingLong)     triggers.push('EMA 9/21 cruzando ↑');
@@ -515,7 +615,6 @@ function earlyWarning(closes, candles, htf1h, htf4h) {
     bbPos: bb ? (p - bb.lower) / (bb.upper - bb.lower) : 0.5,
     pbPct: e9 ? Math.abs(p - e9) / e9 * 100 : 0,
     atr: atrCalc(candles),
-    // campos compatibles con evalPair para reusar funciones
     conds: triggers.map(t => ({ label: t, ok: true })),
     volSpike: vol.ratio >= 2.0,
     trendLongValid: false, trendShortValid: false
@@ -609,33 +708,47 @@ function isPreparing(card) {
   return card.d.signal === 'preparing_long' || card.d.signal === 'preparing_short';
 }
 
-// FIX v6.7 — Validación de volumen multi-timeframe.
-// Antes, isEliteSignal/isSuperSignal solo miraban card.d.vol.ratio, que es el
-// volumen de la vela de 15M (el timeframe de entrada). Eso permitía que una señal
-// pasara como ELITE TREND con 4H y 1H por debajo de 1.0x de volumen (ej. LINK con
-// Vol 4H 0.7x y Vol 1H 0.7x), porque solo el 15M (2.5x) se estaba comprobando.
-// Ahora exigimos volumen ≥1.0x en 4H Y en 1H, no solo en 15M.
+// FIX F (MODO AGRESIVO, paridad con scan.js) — antes esta comprobación
+// dependía únicamente de isPreparing() excluyendo el caso en isConfirmed().
+// Se añade un guard explícito por tipo de señal para que una preparing_*
+// nunca pueda evaluarse como confirmada/SUPER/ELITE, sin depender de que su
+// score máximo (5) se quede siempre por debajo del umbral de SUPER.
+function isConfirmedSignalType(signal) {
+  return signal === 'early_long' || signal === 'early_short' ||
+         signal === 'trend_long' || signal === 'trend_short';
+}
+
+// Validación de volumen multi-timeframe (umbral agresivo 0.7x, ver arriba).
 function mtfVolumeOk(card) {
   const v1 = typeof card.vol1h === 'number' ? card.vol1h : 0;
   const v4 = typeof card.vol4h === 'number' ? card.vol4h : 0;
   return v1 >= MTF_MIN_VOL && v4 >= MTF_MIN_VOL;
 }
 
+// Espejo de mtfVolumeOk() para PREPARING (umbral agresivo 0.3x/0.5x),
+// usado para pintar el badge ✓/✗ en la tarjeta con el mismo criterio.
+function prepVolumeOk(card) {
+  const v1 = typeof card.vol1h === 'number' ? card.vol1h : 0;
+  const v4 = typeof card.vol4h === 'number' ? card.vol4h : 0;
+  return v1 >= PREP_MIN_VOL_1H && v4 >= PREP_MIN_VOL_4H;
+}
+
 function isConfirmed(card) {
   if (card.d.signal === 'neutral' || isPreparing(card)) return false;
+  if (!isConfirmedSignalType(card.d.signal)) return false; // FIX F
   // 4H OBLIGATORIO
   if (card.htf4h !== (card.d.signal.includes('long') ? 'bull' : 'bear')) return false;
   const longOk  = card.d.signal.includes('long')  && card.htf === 'bull';
   const shortOk = card.d.signal.includes('short') && card.htf === 'bear';
   if (!(longOk || shortOk)) return false;
-  // FIX v6.7 — bloqueador de volumen multi-timeframe (ver mtfVolumeOk)
   if (!mtfVolumeOk(card)) return false;
   return true;
 }
 function isSuperSignal(card) {
   if (!isConfirmed(card)) return false;
-  if (card.d.score < 9) return false;
-  if (card.d.vol.ratio < 2.5) return false;
+  // MODO AGRESIVO: score 9→7, vol 2.5x→1.8x
+  if (card.d.score < 7) return false;
+  if (card.d.vol.ratio < 1.8) return false;
   return true;
 }
 function isEliteSignal(card) {
@@ -643,19 +756,42 @@ function isEliteSignal(card) {
   const isLong = card.d.signal.includes('long');
   const stoch = card.d.stochK;
   if (stoch === null) return false;
-  if (isLong && stoch > 35) return false;
-  if (!isLong && stoch < 65) return false;
-  if (card.d.pbPct > 1.5) return false;
+  // MODO AGRESIVO: StochK 35/65→45/55, dist EMA9 1.5%→2.5%, RSI más ancho, SL 1.8%→2.5%
+  if (isLong && stoch > 45) return false;
+  if (!isLong && stoch < 55) return false;
+  if (card.d.pbPct > 2.5) return false;
   const rsi = card.d.rsi;
-  if (isLong && (rsi < 40 || rsi > 68)) return false;
-  if (!isLong && (rsi < 32 || rsi > 60)) return false;
+  if (isLong && (rsi < 35 || rsi > 72)) return false;
+  if (!isLong && (rsi < 28 || rsi > 65)) return false;
   let slPct = 0;
   if (card.d.bb) {
     if (isLong) slPct = (card.d.price - card.d.bb.lower) / card.d.price * 100;
     else slPct = (card.d.bb.upper - card.d.price) / card.d.price * 100;
   } else slPct = 1.5;
-  if (slPct > 1.8) return false;
+  if (slPct > 2.5) return false;
   if (card.d.squeeze) return false;
+  return true;
+}
+
+// FRESCO — filtro independiente basado en estructura + reacción a nivel + volumen real
+function isFresh(card) {
+  return !!card.fresh;
+}
+
+// ============================================================
+// 2 CAPAS — enfoque de traders reales: 1 timeframe para DIRECCIÓN
+// (4H, solo importa si es alcista/bajista, no si está "sano" o
+// extendido) + 1 timeframe para CALIDAD/ENTRADA (15M, aquí se
+// concentran todos los filtros: RSI, StochK, volumen, estructura).
+// El 1H deja de ser una puerta de bloqueo obligatoria.
+// ============================================================
+function isTwoLayer(card) {
+  if (card.d.signal === 'neutral') return false;
+  if (!isConfirmedSignalType(card.d.signal)) return false;
+  const dirLong = card.d.signal.includes('long');
+  const dir4hOk = dirLong ? card.htf4h === 'bull' : card.htf4h === 'bear';
+  if (!dir4hOk) return false; // única exigencia del 4H: dirección
+  if (card.d.score < 6) return false; // toda la calidad se exige en 15M
   return true;
 }
 
@@ -667,6 +803,32 @@ function has4HAlignment(card) {
 }
 
 // ============================================================
+// FIX G — extensión real de 1H/4H (nuevo)
+// El badge "✅ 4H+1H+15M ALINEADOS · Setup ideal" solo comprobaba
+// DIRECCIÓN (bull/bear) de 1H/4H, no si esos timeframes ya estaban
+// agotados (StochK/RSI en extremo, volumen 4H débil). Por eso una
+// tarjeta podía marcar "Setup ideal" con 1H/4H ya sobre-extendidos,
+// justo lo que evalCurrentState() revela luego al abrir el modal.
+// Esta función usa los mismos datos ya cacheados en fetchHTF()
+// (stoch1h/stoch4h) sin llamadas de red adicionales.
+// ============================================================
+function htfExtended(card) {
+  const isLong = card.d.signal.includes('long');
+  const s1 = card.stoch1h, s4 = card.stoch4h;
+  const v4 = typeof card.vol4h === 'number' ? card.vol4h : 0;
+  // Igual que evalCurrentState pero aplicado a 1H/4H, no solo al TF de la tarjeta.
+  if (isLong) {
+    if (s1 !== null && s1 !== undefined && s1 > 75) return true;
+    if (s4 !== null && s4 !== undefined && s4 > 75) return true;
+  } else {
+    if (s1 !== null && s1 !== undefined && s1 < 25) return true;
+    if (s4 !== null && s4 !== undefined && s4 < 25) return true;
+  }
+  if (v4 < MTF_MIN_VOL) return true; // 4H sin volumen real de continuación
+  return false;
+}
+
+// ============================================================
 // SONIDO Y NOTIFICACIONES
 // ============================================================
 function playBeep(type = 'normal') {
@@ -674,7 +836,6 @@ function playBeep(type = 'normal') {
     if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     const now = audioCtx.currentTime;
     if (type === 'elite') {
-      // Fanfarria doble para ELITE
       [880, 1100].forEach((freq, i) => {
         const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
         osc.connect(gain); gain.connect(audioCtx.destination);
@@ -683,7 +844,6 @@ function playBeep(type = 'normal') {
         osc.start(now + i * 0.15); osc.stop(now + i * 0.15 + 0.2);
       });
     } else if (type === 'prep') {
-      // Tono suave para PREPARING
       const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
       osc.connect(gain); gain.connect(audioCtx.destination);
       osc.frequency.value = 440; gain.gain.setValueAtTime(0.15, now);
@@ -737,17 +897,22 @@ function addToHistory(results) {
 
   results.forEach(r => {
     if (r.d.signal === 'neutral') return;
-    // Solo guardar señales con 4H alineado
     if (!has4HAlignment(r)) return;
 
     let tipo = '';
-    if (isEliteSignal(r)) tipo = 'ELITE';
-    else if (isSuperSignal(r)) tipo = 'SUPER';
+    // FIX L — igual que en la tarjeta, combina etiquetas cuando una
+    // señal cumple varias categorías a la vez (ej. SUPER + 2 CAPAS),
+    // en vez de mostrar solo la de mayor prioridad y ocultar el resto.
+    const tipoTags = [];
+    if (isEliteSignal(r)) tipoTags.push('ELITE');
+    else if (isSuperSignal(r)) tipoTags.push('SUPER');
+    if (isFresh(r)) tipoTags.push('FRESCO');
+    if (isTwoLayer(r)) tipoTags.push('2 CAPAS');
+    if (tipoTags.length > 0) tipo = tipoTags.join('+');
     else if (isPreparing(r)) tipo = 'PREPARING';
     else if (isConfirmed(r)) tipo = 'CONF';
-    else return; // No guardar señales sin confirmación
+    else return;
 
-    // Evitar duplicados en la misma sesión (mismo símbolo + señal en menos de 15min)
     const key = `${r.symbol}|${r.d.signal}`;
     const cutoff = Date.now() - 15 * 60 * 1000;
     const exists = signalHistory.find(h => h.key === key && h.ts > cutoff);
@@ -768,7 +933,6 @@ function addToHistory(results) {
     });
   });
 
-  // Máximo 50 entradas
   if (signalHistory.length > 50) signalHistory = signalHistory.slice(0, 50);
   renderHistory();
 }
@@ -790,7 +954,8 @@ function renderHistory() {
   table.style.display = 'table';
 
   tbody.innerHTML = signalHistory.map(h => {
-    const tipoClass = h.tipo === 'ELITE' ? 'h-elite' : h.tipo === 'SUPER' ? 'h-super' : h.tipo === 'PREPARING' ? 'h-prep' : '';
+    const tipoClass = h.tipo.includes('ELITE') ? 'h-elite' : h.tipo.includes('SUPER') ? 'h-super' : h.tipo === 'PREPARING' ? 'h-prep' : '';
+    const tipoStyle = h.tipo.includes('FRESCO') ? 'color:#4ade80;' : h.tipo.includes('2 CAPAS') && !h.tipo.includes('ELITE') && !h.tipo.includes('SUPER') ? 'color:#38bdf8;' : '';
     const dirClass  = h.signal.includes('long') ? 'h-long' : 'h-short';
     const dirLabel  = h.signal === 'preparing_long' ? '⏳ PREP LONG'
                     : h.signal === 'preparing_short' ? '⏳ PREP SHORT'
@@ -804,12 +969,15 @@ function renderHistory() {
     const h1Color = h.htf1h === 'bull' ? 'var(--long)' : h.htf1h === 'bear' ? 'var(--short)' : 'var(--muted)';
     const vol1hStr = h.vol1h !== null ? `${h.vol1h.toFixed(1)}x` : '–';
     const vol4hStr = h.vol4h !== null ? `${h.vol4h.toFixed(1)}x` : '–';
-    const vol1hColor = h.vol1h !== null && h.vol1h < 1.0 ? 'var(--short)' : 'inherit';
-    const vol4hColor = h.vol4h !== null && h.vol4h < 1.0 ? 'var(--short)' : 'inherit';
+    const isPrepRow = h.tipo === 'PREPARING';
+    const vol1hMin = isPrepRow ? PREP_MIN_VOL_1H : MTF_MIN_VOL;
+    const vol4hMin = isPrepRow ? PREP_MIN_VOL_4H : MTF_MIN_VOL;
+    const vol1hColor = h.vol1h !== null && h.vol1h < vol1hMin ? 'var(--short)' : 'inherit';
+    const vol4hColor = h.vol4h !== null && h.vol4h < vol4hMin ? 'var(--short)' : 'inherit';
     return `<tr>
       <td style="color:var(--muted)">${h.time}</td>
       <td style="font-weight:700">${h.symbol.replace('USDT','/USDT')}</td>
-      <td class="${tipoClass}" style="font-weight:700">${h.tipo}</td>
+      <td class="${tipoClass}" style="font-weight:700;${tipoStyle}">${h.tipo}</td>
       <td class="${dirClass}">${dirLabel}</td>
       <td class="h-score" style="color:var(--accent)">${h.score}/9</td>
       <td style="color:${h4Color};font-weight:700">${h4Label} 4H</td>
@@ -871,6 +1039,8 @@ function calcRisk(price, dir, bb, at) {
 
 // ============================================================
 // MODAL — evaluar estado actual
+// FIX G — umbral de volumen alineado con MTF_MIN_VOL (modo agresivo,
+// antes hardcodeado a 1.0x, inconsistente con el resto del sistema).
 // ============================================================
 function evalCurrentState(d, htf1h, htf4h, isLong) {
   const { rsi, stochK, pbPct: pb, vol: volObj, price, ema9, ema21, ema50 } = d;
@@ -882,7 +1052,7 @@ function evalCurrentState(d, htf1h, htf4h, isLong) {
     const c3 = pb < 1.5; checks.push({ label: 'Dist EMA9 < 1.5%', ok: c3 }); if (!c3) problems++;
     const c4 = price >= ema9; checks.push({ label: 'Precio > EMA9', ok: c4 }); if (!c4) problems++;
     const c5 = ema21 > ema50; checks.push({ label: 'EMA21 > EMA50', ok: c5 }); if (!c5) problems++;
-    const c6 = vol >= 1.0; checks.push({ label: 'Vol ≥ 1.0x', ok: c6 }); if (!c6) problems++;
+    const c6 = vol >= MTF_MIN_VOL; checks.push({ label: `Vol ≥ ${MTF_MIN_VOL}x`, ok: c6 }); if (!c6) problems++;
     const c7 = htf1h === 'bull'; checks.push({ label: '1H alcista', ok: c7 }); if (!c7) problems++;
     const c8 = htf4h === 'bull'; checks.push({ label: '4H alcista ✦', ok: c8 }); if (!c8) problems++;
   } else {
@@ -891,7 +1061,7 @@ function evalCurrentState(d, htf1h, htf4h, isLong) {
     const c3 = pb < 1.5; checks.push({ label: 'Dist EMA9 < 1.5%', ok: c3 }); if (!c3) problems++;
     const c4 = price <= ema9; checks.push({ label: 'Precio < EMA9', ok: c4 }); if (!c4) problems++;
     const c5 = ema21 < ema50; checks.push({ label: 'EMA21 < EMA50', ok: c5 }); if (!c5) problems++;
-    const c6 = vol >= 1.0; checks.push({ label: 'Vol ≥ 1.0x', ok: c6 }); if (!c6) problems++;
+    const c6 = vol >= MTF_MIN_VOL; checks.push({ label: `Vol ≥ ${MTF_MIN_VOL}x`, ok: c6 }); if (!c6) problems++;
     const c7 = htf1h === 'bear'; checks.push({ label: '1H bajista', ok: c7 }); if (!c7) problems++;
     const c8 = htf4h === 'bear'; checks.push({ label: '4H bajista ✦', ok: c8 }); if (!c8) problems++;
   }
@@ -958,12 +1128,23 @@ async function _updateStatusPanel(symbol, cardData, tf) {
     ]);
     if (r1h.ok) { const c1h = await r1h.json(); htf1h = trendGeneric(c1h); }
     if (r4h.ok) { const c4h = await r4h.json(); htf4h = trendGeneric(c4h); }
-    const isLong = cardData && cardData.d && cardData.d.signal ? cardData.d.signal.includes('long') : true;
+    // FIX K — cuando d.signal es 'neutral' (ej. señales FRESCO puras),
+    // antes se asumía dirección corta por defecto sin motivo, evaluando
+    // el modal con la dirección equivocada. Ahora usa fresh.signal si
+    // existe antes de caer al fallback.
+    let isLong;
+    if (cardData && cardData.d && cardData.d.signal && cardData.d.signal !== 'neutral') {
+      isLong = cardData.d.signal.includes('long');
+    } else if (cardData && cardData.fresh && cardData.fresh.signal) {
+      isLong = cardData.fresh.signal.includes('long');
+    } else {
+      isLong = true;
+    }
     const state = evalCurrentState(d, htf1h, htf4h, isLong);
     const rsiColor   = (isLong && (state.rsi > 70 || state.rsi < 40)) ? 'bad' : (!isLong && (state.rsi < 30 || state.rsi > 60)) ? 'bad' : 'good';
     const stochColor = state.stochK !== null ? ((isLong && state.stochK > 75) || (!isLong && state.stochK < 25) ? 'bad' : 'good') : 'warn';
     const pbColor    = state.pb > 1.5 ? 'bad' : state.pb > 0.8 ? 'warn' : 'good';
-    const volColor   = state.vol < 1.0 ? 'bad' : state.vol >= 2.0 ? 'good' : 'warn';
+    const volColor   = state.vol < MTF_MIN_VOL ? 'bad' : state.vol >= 2.0 ? 'good' : 'warn';
     const htfOk      = isLong ? (htf1h === 'bull' && htf4h === 'bull') : (htf1h === 'bear' && htf4h === 'bear');
     const htfPartial = isLong ? (htf1h === 'bull' || htf4h === 'bull') : (htf1h === 'bear' || htf4h === 'bear');
     const htfStatus  = htfOk ? '🟢 4H+1H OK' : htfPartial ? '🟡 Parcial' : '🔴 En contra';
@@ -1011,14 +1192,22 @@ document.addEventListener('keydown', e => {
 // ============================================================
 const cardDataStore = {};
 
-function renderCard(symbol, d, htf, htf4h, delay, vol1h, vol4h) {
-  const cardObj = { symbol, d, htf, htf4h, vol1h, vol4h };
+function renderCard(symbol, d, htf, htf4h, delay, vol1h, vol4h, stoch1h, stoch4h, fresh) {
+  const cardObj = { symbol, d, htf, htf4h, vol1h, vol4h, stoch1h, stoch4h, fresh };
   const isElite = isEliteSignal(cardObj);
+  const isSuperOnly = !isElite && isSuperSignal(cardObj); // FIX L
   const isPrep  = d.signal === 'preparing_long' || d.signal === 'preparing_short';
   const isConf  = !isPrep && isConfirmed(cardObj);
   const aligned4h = htf4h === (d.signal.includes('long') ? 'bull' : 'bear');
   const tripleAligned = isConf && aligned4h;
+  const isTwoL = isTwoLayer(cardObj);
+  // FIX G — el badge "Setup ideal" ahora exige además que 1H/4H no estén
+  // ya extendidos (StochK/RSI en extremo, vol 4H débil). Antes solo
+  // miraba dirección (bull/bear), por eso podía marcar "ideal" con el
+  // movimiento ya agotado en timeframes superiores.
+  const extended = tripleAligned && htfExtended(cardObj);
   const volMtfOk = mtfVolumeOk(cardObj);
+  const prepVolOk = isPrep ? prepVolumeOk(cardObj) : true;
 
   const col = d.signal === 'early_long'    ? '#f59e0b'
             : d.signal === 'early_short'   ? '#f97316'
@@ -1035,22 +1224,41 @@ function renderCard(symbol, d, htf, htf4h, delay, vol1h, vol4h) {
                  : d.signal === 'preparing_short'  ? '⏳ PREP SHORT'
                  : '— NEUTRAL';
 
-  // Banner
   let banner = '';
   const alignedButVolFails = !isPrep && d.signal !== 'neutral' && aligned4h &&
     ((d.signal.includes('long') && htf === 'bull') || (d.signal.includes('short') && htf === 'bear')) &&
     !volMtfOk;
 
-  if (isElite) {
+  // FIX L — antes el banner mostraba solo la PRIMERA etiqueta que
+  // encajaba (fresh > 2capas > elite > ...), ocultando que una misma
+  // señal también podía ser SUPER o ELITE al mismo tiempo. Ahora se
+  // combinan todas las etiquetas de nivel superior que apliquen.
+  const topTags = [];
+  if (isElite) topTags.push('👑 ELITE');
+  else if (isSuperOnly) topTags.push('⭐ SUPER');
+  if (fresh) topTags.push(fresh.signal === 'fresh_long' ? '🌱 FRESCO LONG' : '🌱 FRESCO SHORT');
+  if (isTwoL) topTags.push('🎯 2 CAPAS');
+
+  if (topTags.length >= 2) {
+    banner = `<div class="banner" style="background:rgba(212,175,55,0.15);border-color:var(--elite);color:var(--elite);font-weight:700;text-align:center;">${topTags.join(' · ')} · Score ${d.score}/9</div>`;
+  } else if (fresh) {
+    const dir = fresh.signal === 'fresh_long' ? 'LONG' : 'SHORT';
+    banner = `<div class="banner" style="background:rgba(74,222,128,0.15);border-color:#4ade80;color:#4ade80;font-weight:700;text-align:center;">🌱 FRESCO ${dir} · Rechazo en nivel $${fmt(fresh.level)} · Estructura 4H + Volumen real</div>`;
+  } else if (isTwoL) {
+    banner = `<div class="banner" style="background:rgba(56,189,248,0.15);border-color:#38bdf8;color:#38bdf8;font-weight:700;text-align:center;">🎯 2 CAPAS · 4H solo dirección (sin exigir salud) · 15M calidad ${d.score}/9</div>`;
+  } else if (isElite) {
     banner = `<div class="banner b-elite">👑 ELITE · Score ${d.score}/9 · Vol 15M ${d.vol.ratio.toFixed(1)}x · Vol 1H ${(vol1h||0).toFixed(1)}x · Vol 4H ${(vol4h||0).toFixed(1)}x · 4H+1H+15M PERFECTOS</div>`;
+  } else if (isSuperOnly) {
+    banner = `<div class="banner b-fuerte">⭐ SUPER · Score ${d.score}/9 · Vol 15M ${d.vol.ratio.toFixed(1)}x</div>`;
   } else if (isPrep) {
     const dir = d.signal === 'preparing_long' ? 'LONG' : 'SHORT';
-    banner = `<div class="banner b-preparing">⏳ PREPARING ${dir} · 4H ALINEADO · ${d.triggers ? d.triggers.slice(0,2).join(' · ') : 'Señal a punto de formarse'}</div>`;
+    banner = `<div class="banner b-preparing">⏳ PREPARING ${dir} · 4H ALINEADO · Vol 1H ${(vol1h||0).toFixed(1)}x · Vol 4H ${(vol4h||0).toFixed(1)}x · ${d.triggers ? d.triggers.slice(0,2).join(' · ') : 'Señal a punto de formarse'}</div>`;
   } else if (alignedButVolFails) {
-    // FIX v6.7: setup técnico y estructura HTF alineados, pero volumen 4H/1H
-    // insuficiente — antes esto podía clasificarse como ELITE/TREND fuerte.
     const dir = d.signal === 'trend_long' || d.signal === 'early_long' ? 'ALCISTA' : 'BAJISTA';
-    banner = `<div class="banner b-volwarn">⚠ 4H+1H ALINEADOS PERO VOL BAJO · Vol 1H ${(vol1h||0).toFixed(1)}x / Vol 4H ${(vol4h||0).toFixed(1)}x (mín 1.0x) · No es ELITE ni SUPER</div>`;
+    banner = `<div class="banner b-volwarn">⚠ 4H+1H ALINEADOS PERO VOL BAJO · Vol 1H ${(vol1h||0).toFixed(1)}x / Vol 4H ${(vol4h||0).toFixed(1)}x (mín ${MTF_MIN_VOL}x) · No es ELITE ni SUPER</div>`;
+  } else if (tripleAligned && extended) {
+    // FIX G — nuevo estado: dirección alineada pero 1H/4H ya extendidos
+    banner = `<div class="banner b-volwarn">⚠ 4H+1H ALINEADOS EN DIRECCIÓN, PERO YA EXTENDIDOS (StochK/Vol4H débil) · Posible entrada tardía · Revisa 1H/4H antes de entrar</div>`;
   } else if (tripleAligned) {
     banner = `<div class="banner b-elite" style="background:rgba(34,211,238,0.15);border-color:#22d3ee;color:#22d3ee;">✅ 4H+1H+15M ALINEADOS · Setup ideal</div>`;
   } else if (d.signal !== 'neutral' && isConf && d.score >= 8 && d.vol.ratio >= 2) {
@@ -1080,23 +1288,27 @@ function renderCard(symbol, d, htf, htf4h, delay, vol1h, vol4h) {
   const volPct = Math.min(d.vol.ratio * 50, 100);
   const vol1hPct = Math.min((vol1h||0) * 50, 100);
   const vol4hPct = Math.min((vol4h||0) * 50, 100);
-  const vol1hColor = (vol1h||0) >= MTF_MIN_VOL ? 'var(--vol)' : 'var(--short)';
-  const vol4hColor = (vol4h||0) >= MTF_MIN_VOL ? 'var(--vol)' : 'var(--short)';
+  const vol1hMinForCard = isPrep ? PREP_MIN_VOL_1H : MTF_MIN_VOL;
+  const vol4hMinForCard = isPrep ? PREP_MIN_VOL_4H : MTF_MIN_VOL;
+  const vol1hColor = (vol1h||0) >= vol1hMinForCard ? 'var(--vol)' : 'var(--short)';
+  const vol4hColor = (vol4h||0) >= vol4hMinForCard ? 'var(--vol)' : 'var(--short)';
 
-  // Condiciones a mostrar
   let condHTML = '';
   if (isPrep) {
     condHTML = (d.triggers || []).map(t => `<span class="cond prep">⏳ ${t}</span>`).join('');
+    condHTML += `<span class="cond ${(vol4h||0) >= PREP_MIN_VOL_4H ? 'ok' : 'fail'}">${(vol4h||0) >= PREP_MIN_VOL_4H ? '✓' : '✗'} Vol 4H ${(vol4h||0).toFixed(1)}x (mín ${PREP_MIN_VOL_4H}x)</span>`;
+    condHTML += `<span class="cond ${(vol1h||0) >= PREP_MIN_VOL_1H ? 'ok' : 'fail'}">${(vol1h||0) >= PREP_MIN_VOL_1H ? '✓' : '✗'} Vol 1H ${(vol1h||0).toFixed(1)}x (mín ${PREP_MIN_VOL_1H}x)</span>`;
   } else {
     const passC = d.conds.filter(c => c.ok).slice(0, 5);
     const failC = d.conds.filter(c => !c.ok).slice(0, 2);
     condHTML = [...passC.map(c => `<span class="cond ok">✓ ${c.label}</span>`), ...failC.map(c => `<span class="cond fail">✗ ${c.label}</span>`), d.squeeze ? '<span class="cond prep">⚡ SQUEEZE</span>' : ''].join('');
-    // FIX v6.7 — mostrar explícitamente el resultado del gate de volumen MTF
     condHTML += `<span class="cond ${(vol4h||0) >= MTF_MIN_VOL ? 'ok' : 'fail'}">${(vol4h||0) >= MTF_MIN_VOL ? '✓' : '✗'} Vol 4H ${(vol4h||0).toFixed(1)}x</span>`;
     condHTML += `<span class="cond ${(vol1h||0) >= MTF_MIN_VOL ? 'ok' : 'fail'}">${(vol1h||0) >= MTF_MIN_VOL ? '✓' : '✗'} Vol 1H ${(vol1h||0).toFixed(1)}x</span>`;
+    // FIX G — mostrar StochK real de 1H/4H en las condiciones de la tarjeta
+    if (typeof stoch1h === 'number') condHTML += `<span class="cond ${extended ? 'fail' : 'ok'}">StochK 1H ${stoch1h.toFixed(1)}</span>`;
+    if (typeof stoch4h === 'number') condHTML += `<span class="cond ${extended ? 'fail' : 'ok'}">StochK 4H ${stoch4h.toFixed(1)}</span>`;
   }
 
-  // Pullback
   let pbHTML = '';
   if (d.signal.startsWith('trend')) {
     const pbColor = d.pbPct < 0.5 ? '#00ff88' : d.pbPct < 1.5 ? '#fbbf24' : '#ff3366';
@@ -1105,7 +1317,6 @@ function renderCard(symbol, d, htf, htf4h, delay, vol1h, vol4h) {
     pbHTML = `<div class="pullback-row"><span class="pb-label">DIST EMA9</span><div class="pb-track"><div class="pb-fill" style="width:${pbPct2}%;background:${pbColor}"></div></div><span class="pb-val" style="color:${pbColor}">${d.pbPct.toFixed(2)}%</span></div><div style="font-size:8px;text-align:center;margin-bottom:6px;">${pbMsg}</div>`;
   }
 
-  // Riesgo
   let riskHTML = '';
   if (d.signal !== 'neutral') {
     const dir = d.signal.includes('long') ? 'long' : 'short';
@@ -1125,7 +1336,7 @@ function renderCard(symbol, d, htf, htf4h, delay, vol1h, vol4h) {
   }
 
   const eliteClass = isElite ? 'elite-card' : isPrep ? 'prep-card' : '';
-  cardDataStore[symbol] = { d, htf, htf4h, vol1h, vol4h };
+  cardDataStore[symbol] = { d, htf, htf4h, vol1h, vol4h, stoch1h, stoch4h, fresh };
 
   return `<div class="card ${d.signal} ${eliteClass}" style="animation-delay:${delay}ms" onclick="openChartFromStore('${symbol}')">
     <div class="card-top">
@@ -1135,7 +1346,8 @@ function renderCard(symbol, d, htf, htf4h, delay, vol1h, vol4h) {
           ${vwapBadge}
           <span class="htf-b ${htf4hClass}">${htf4hLabel}</span>
           <span class="htf-b ${htfClass}">${htfLabel}</span>
-          ${tripleAligned ? '<span class="htf-b htf-aligned">✅ 4H+1H+15M</span>' : ''}
+          ${tripleAligned && !extended ? '<span class="htf-b htf-aligned">✅ 4H+1H+15M</span>' : ''}
+          ${tripleAligned && extended ? '<span class="htf-b" style="background:rgba(251,191,36,0.15);color:#fbbf24;border:1px solid rgba(251,191,36,0.4);">⚠ EXTENDIDO</span>' : ''}
           ${d.squeeze ? '<span style="font-size:8px;">⚡SQZ</span>' : ''}
         </div>
       </div>
@@ -1183,6 +1395,9 @@ function openChartFromStore(symbol) {
 
 // ============================================================
 // ESCANEO — con caché 4H/1H (trend + volumen) y earlyWarning
+// FIX G — fetchHTF ahora también calcula y cachea el StochK de 1H
+// y 4H (a partir de las mismas velas ya descargadas), para poder
+// detectar si esos timeframes están extendidos sin llamadas extra.
 // ============================================================
 async function fetchHTF(symbol) {
   const now = Date.now();
@@ -1197,12 +1412,17 @@ async function fetchHTF(symbol) {
   const c4h = r4h.ok ? await r4h.json() : [];
   const htf1h = c1h.length ? trendGeneric(c1h) : 'neutral';
   const htf4h = c4h.length ? trendGeneric(c4h) : 'neutral';
-  // FIX v6.7 — calcular también el volumen relativo de 1H y 4H, no solo la tendencia.
-  // Esto es lo que faltaba: antes solo se comprobaba dirección (bull/bear) en estos
-  // timeframes, nunca su volumen, así que el volumen de 15M "tapaba" el fallo real.
   const vol1h = c1h.length >= 21 ? volSpikeCalc(c1h).ratio : 0;
   const vol4h = c4h.length >= 21 ? volSpikeCalc(c4h).ratio : 0;
-  const result = { htf1h, htf4h, vol1h, vol4h, ts: now };
+  // FIX G — StochK de 1H/4H, reutilizando las mismas velas ya descargadas.
+  const closes1h = c1h.length ? c1h.map(c => parseFloat(c[4])) : [];
+  const closes4h = c4h.length ? c4h.map(c => parseFloat(c[4])) : [];
+  const stoch1h = closes1h.length ? stochRsi(closes1h).k : null;
+  const stoch4h = closes4h.length ? stochRsi(closes4h).k : null;
+  // FRESCO — sesgo estructural de 4H (swings), guarda velas 1H para
+  // calcular niveles de soporte/resistencia relativos al precio actual.
+  const struct4h = c4h.length >= 10 ? structuralBias(c4h) : 'neutral';
+  const result = { htf1h, htf4h, vol1h, vol4h, stoch1h, stoch4h, struct4h, c1hCandles: c1h, ts: now };
   htfCache[symbol] = result;
   return result;
 }
@@ -1225,32 +1445,32 @@ async function scanAll() {
       if (!r15.ok) throw new Error();
       const c15 = await r15.json();
       const closes = c15.map(c => parseFloat(c[4]));
-      const { htf1h, htf4h, vol1h, vol4h } = htfData;
+      const { htf1h, htf4h, vol1h, vol4h, stoch1h, stoch4h, struct4h, c1hCandles } = htfData;
 
-      // Primero intentar señal confirmada
       let d = evalPair(closes, c15);
       if (!d) throw new Error();
 
-      // Si no hay señal confirmada con 4H alineado, intentar earlyWarning
       const hasConfirmed4H = d.signal !== 'neutral' && htf4h === (d.signal.includes('long') ? 'bull' : 'bear');
 
       if (!hasConfirmed4H) {
-        const ew = earlyWarning(closes, c15, htf1h, htf4h);
+        const ew = earlyWarning(closes, c15, htf1h, htf4h, vol1h, vol4h);
         if (ew) d = ew;
         else if (d.signal !== 'neutral' && !hasConfirmed4H) {
-          // Señal existe pero 4H no alineado → descartamos (solo mostramos si piden 'all')
           d = { ...d, signal: 'neutral' };
         }
       }
 
-      results.push({ symbol: sym, d, htf: htf1h, htf4h, vol1h, vol4h });
+      // FRESCO — sistema paralelo, no sustituye al scoring 9/9 existente.
+      const levels1h = c1hCandles && c1hCandles.length ? nearestLevels(c1hCandles, closes[closes.length - 1]) : { resistance: null, support: null };
+      const fresh = freshSignal(closes, c15, struct4h, levels1h, vol1h, vol4h);
+
+      results.push({ symbol: sym, d, htf: htf1h, htf4h, vol1h, vol4h, stoch1h, stoch4h, struct4h, fresh });
     } catch(e) { /* ignorar */ }
 
     document.getElementById('prog').style.width = `${((i + 1) / PAIRS.length) * 100}%`;
     await new Promise(r => setTimeout(r, 80));
   }
 
-  // Ordenar: ELITE > SUPER > PREPARING > CONFIRMED > resto
   results.sort((a, b) => {
     const rank = r => isEliteSignal(r) ? 0 : isSuperSignal(r) ? 1 : isPreparing(r) && has4HAlignment(r) ? 2 : isConfirmed(r) ? 3 : 4;
     const ra = rank(a), rb = rank(b);
@@ -1262,7 +1482,7 @@ async function scanAll() {
   renderGrid();
   updateStats();
   checkAndNotify(results);
-  addToHistory(results); // Añadir al historial
+  addToHistory(results);
 
   const now = new Date();
   document.getElementById('tsLeft').innerHTML = `<span class="live-dot"></span>ACTUALIZADO ${now.toLocaleTimeString('es-ES')}`;
@@ -1278,20 +1498,23 @@ function renderGrid() {
   if (currentFilter === 'elite')     f = allCards.filter(r => isEliteSignal(r));
   else if (currentFilter === 'super')f = allCards.filter(r => isSuperSignal(r));
   else if (currentFilter === 'preparing') f = allCards.filter(r => isPreparing(r) && has4HAlignment(r));
+  else if (currentFilter === 'fresh') f = allCards.filter(r => isFresh(r));
+  else if (currentFilter === 'twolayer') f = allCards.filter(r => isTwoLayer(r));
   else if (currentFilter === 'confirmed') f = allCards.filter(r => isConfirmed(r));
   else if (currentFilter === 'signals')   f = allCards.filter(r => r.d.signal !== 'neutral');
-  // 'all' muestra todo incluyendo neutrales sin 4H
   if (f.length === 0) {
-    grid.innerHTML = '<div class="empty">Sin señales para este filtro · Intenta con ⏳ PREPARING o 🎯 SEÑALES</div>';
+    grid.innerHTML = '<div class="empty">Sin señales para este filtro · Prueba tocando otro número arriba (⏳ PREP, 🌱 FRESCO, 🎯 2 CAPAS) o la pastilla 🎯 SEÑALES</div>';
     return;
   }
-  grid.innerHTML = f.map((r, i) => renderCard(r.symbol, r.d, r.htf, r.htf4h, i * 30, r.vol1h, r.vol4h)).join('');
+  grid.innerHTML = f.map((r, i) => renderCard(r.symbol, r.d, r.htf, r.htf4h, i * 30, r.vol1h, r.vol4h, r.stoch1h, r.stoch4h, r.fresh)).join('');
 }
 
 function updateStats() {
   document.getElementById('sElite').textContent = allCards.filter(c => isEliteSignal(c)).length;
   document.getElementById('sSuper').textContent = allCards.filter(c => isSuperSignal(c)).length;
   document.getElementById('sPrep').textContent  = allCards.filter(c => isPreparing(c) && has4HAlignment(c)).length;
+  document.getElementById('sFresh').textContent = allCards.filter(c => isFresh(c)).length;
+  document.getElementById('s2L').textContent = allCards.filter(c => isTwoLayer(c)).length;
   document.getElementById('sTotal').textContent = allCards.length;
 }
 
@@ -1300,6 +1523,15 @@ function setFilter(f, el) {
   document.querySelectorAll('.fbtn').forEach(b => b.classList.remove('active'));
   el.classList.add('active');
   if (allCards.length > 0) renderGrid();
+}
+
+// FIX H — permite filtrar tocando los números de arriba (ELITE, SUPER,
+// PREP, FRESCO, 2 CAPAS, TOTAL), no solo las pastillas de abajo. Antes
+// esos contadores eran solo informativos y tocarlos no hacía nada,
+// dando la sensación de que el filtro estaba roto.
+function selectFilterByName(name) {
+  const btn = document.querySelector(`.fbtn[data-filter="${name}"]`);
+  if (btn) setFilter(name, btn);
 }
 
 function setAlertMode(mode) {
@@ -1334,7 +1566,7 @@ function toggleAuto() {
     autoInterval = setInterval(() => {
       scanAll();
       countdownSecs = 900;
-    }, 900000); // 15 min
+    }, 900000);
     autoCountdownInterval = setInterval(() => {
       countdownSecs--;
       if (countdownSecs < 0) countdownSecs = 900;
@@ -1352,5 +1584,183 @@ requestNotificationPermission();
 updateCap();
 setAlertMode('elite');
 </script>
-</body>
-</html>
+<script>
+/* ============================================================
+   hl-addon.js — ScalpScan Pro → Hyperliquid  (v1)
+   No toca la lógica de señales. Solo añade, a cada tarjeta con señal:
+   · si el par existe en Hyperliquid (y con qué nombre: BTC, kPEPE, ...)
+   · precio de Hyperliquid vs Binance (diferencia %)
+   · ficha de orden lista para copiar: entrada, SL, TP1, TP2, tamaño
+     en unidades del activo, margen aislado, liquidación estimada, funding
+   · aviso si la liquidación queda demasiado cerca del SL
+   (Integrado en este HTML: no hace falta ningún archivo aparte.)
+   ============================================================ */
+(function () {
+  'use strict';
+
+  const CFG = {
+    // Valores iniciales de la barra CUENTA / RIESGO / LEV (editables en la página).
+    applyDefaults: true,
+    defaults: { capital: 300, riskPct: 1, leverage: 5 },
+    priceDiffWarnPct: 0.3,     // aviso si HL y Binance difieren más de esto
+    priceDiffMaxPct: 5,        // por encima, se asume que el par NO es el mismo activo
+    minOrderUsd: 10,           // mínimo de valor de orden en Hyperliquid
+    liqRatioGood: 3,           // distancia a liquidación / distancia al SL
+    liqRatioMin: 1.5,
+    fetchTimeoutMs: 8000,
+    // Binance → nombres alternativos en Hyperliquid (además de 'k'+BASE)
+    aliases: { MATIC: ['POL', 'MATIC'], FTM: ['S', 'FTM'] }
+  };
+
+  let HL = { ok: false, ts: 0, byName: {}, error: null };
+  let onlyHL = false;
+  const TICKETS = {}; // texto de la ficha por símbolo, para el botón Copiar
+
+  // ---------- funciones puras (testeables) ----------
+  function resolveAsset(byName, binanceSymbol) {
+    const base = binanceSymbol.replace(/USDT$/, '');
+    const cands = (CFG.aliases[base] || [base]).concat(['k' + base]);
+    for (const name of cands) {
+      const a = byName[name];
+      if (a) return { asset: a, mult: name === 'k' + base ? 1000 : 1 };
+    }
+    return null;
+  }
+
+  // Hyperliquid: máx. 5 cifras significativas y 6 - szDecimals decimales (perps);
+  // los enteros siempre valen.
+  function roundPx(px, szDecimals) {
+    if (!isFinite(px) || px <= 0) return px;
+    if (px >= 100000) return Math.round(px);
+    const maxDec = Math.max(0, 6 - szDecimals);
+    return Number(Number(px.toPrecision(5)).toFixed(maxDec));
+  }
+
+  function floorSize(units, szDecimals) {
+    const f = Math.pow(10, szDecimals);
+    return Number((Math.floor(units * f + 1e-9) / f).toFixed(szDecimals));
+  }
+
+  // liq = price − side·margin_disponible/tamaño/(1 − l·side), con l = 1/(2·maxLev)
+  // y margen aislado = notional/lev (fórmula documentada por Hyperliquid).
+  function liqPrice(entry, lev, maxLev, isLong) {
+    const l = 1 / (2 * maxLev);
+    const k = 1 / lev - l;
+    return isLong ? entry * (1 - k / (1 - l)) : entry * (1 + k / (1 + l));
+  }
+
+  // d: datos de la señal del scanner; hl: {asset, mult}; P: {capital, riskPct, leverage};
+  // rk: resultado de calcRisk() del scanner.
+  function buildTicket(d, hl, P, rk) {
+    const a = hl.asset, mult = hl.mult;
+    const isLong = d.signal.includes('long');
+    const dir = isLong ? 1 : -1;
+    const hlEq = a.mark / mult;                       // precio HL en unidades de Binance
+    const diffPct = (hlEq - d.price) / d.price * 100;
+    if (Math.abs(diffPct) > CFG.priceDiffMaxPct) return { mismatch: true, name: a.name, diffPct };
+
+    const slDist = Math.abs(d.price - rk.sl);
+    const tp1Dist = Math.abs(rk.tp1 - d.price);
+    const tp2Dist = Math.abs(rk.tp2 - d.price);
+    const toHL = v => roundPx(v * mult, a.szDecimals);
+    const entry = toHL(hlEq);
+    const sl = toHL(hlEq - dir * slDist);
+    const tp1 = toHL(hlEq + dir * tp1Dist);
+    const tp2 = toHL(hlEq + dir * tp2Dist);
+
+    const notional = rk.contracts * d.price;          // = riesgo / distancia al SL
+    const units = floorSize(notional / a.mark, a.szDecimals);
+    const notionalReal = units * a.mark;
+    const lev = Math.min(P.leverage, a.maxLev);
+    const margin = notionalReal / lev;
+    const slPct = slDist / hlEq * 100;
+    const riskReal = notionalReal * slPct / 100;
+    const liq = liqPrice(hlEq, lev, a.maxLev, isLong);
+    const liqPct = Math.abs(liq - hlEq) / hlEq * 100;
+    const ratio = liqPct / slPct;
+
+    const warns = [];
+    if (units <= 0) warns.push(['bad', 'Tamaño demasiado pequeño para este activo']);
+    else if (notionalReal < CFG.minOrderUsd) warns.push(['bad', `Orden de $${notionalReal.toFixed(2)} < mínimo $${CFG.minOrderUsd} de Hyperliquid`]);
+    if (margin > P.capital) warns.push(['bad', `Margen $${margin.toFixed(2)} > cuenta $${P.capital}. Sube el apalancamiento o baja el riesgo`]);
+    if (ratio < CFG.liqRatioMin) warns.push(['bad', `Liquidación muy cerca del SL (x${ratio.toFixed(1)}). Baja el apalancamiento`]);
+    else if (ratio < CFG.liqRatioGood) warns.push(['warn', `Liquidación algo cerca del SL (x${ratio.toFixed(1)}). Mejor con menos apalancamiento`]);
+    if (Math.abs(diffPct) > CFG.priceDiffWarnPct) warns.push(['warn', `Precio HL difiere ${diffPct.toFixed(2)}% de Binance: revisa la entrada`]);
+    if (P.leverage > a.maxLev) warns.push(['warn', `Este activo admite máx. ${a.maxLev}x: se usa ${a.maxLev}x`]);
+    if (mult !== 1) warns.push(['info', `Activo x${mult} (${a.name}): precios y tamaños en unidades de Hyperliquid`]);
+
+    return {
+      mismatch: false, name: a.name, isLong, mult, diffPct,
+      entry, sl, tp1, tp2, units, notional: notionalReal, lev, margin,
+      riskReal, liq: roundPx(liq * mult, a.szDecimals), liqPct, ratio, slPct,
+      funding: a.funding, onlyIsolated: a.onlyIsolated, warns
+    };
+  }
+
+  function ticketText(t) {
+    return [
+      `ScalpScan → Hyperliquid`,
+      `${t.name} · ${t.isLong ? 'LONG' : 'SHORT'}`,
+      `Margen: Isolated ${t.lev}x`,
+      `Entrada (Limit): ${t.entry}`,
+      `Tamaño: ${t.units} ${t.name} (~$${t.notional.toFixed(2)})`,
+      `SL: ${t.sl}`,
+      `TP1: ${t.tp1}  |  TP2: ${t.tp2}`,
+      `Liq. aprox.: ${t.liq} (${t.liqPct.toFixed(1)}% desde la entrada)`
+    ].join('\n');
+  }
+
+  // ---------- datos de Hyperliquid ----------
+  async function refreshHL() {
+    const ctl = typeof AbortController !== 'undefined' ? new AbortController() : null;
+    const timer = ctl ? setTimeout(() => ctl.abort(), CFG.fetchTimeoutMs) : null;
+    try {
+      const r = await fetch('https://api.hyperliquid.xyz/info', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: 'metaAndAssetCtxs' }),
+        signal: ctl ? ctl.signal : undefined
+      });
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      const [meta, ctxs] = await r.json();
+      const byName = {};
+      meta.universe.forEach((u, i) => {
+        if (u.isDelisted) return;
+        const c = ctxs[i] || {};
+        const mark = parseFloat(c.markPx);
+        if (!isFinite(mark) || mark <= 0) return;
+        byName[u.name] = {
+          name: u.name, maxLev: u.maxLeverage, szDecimals: u.szDecimals,
+          onlyIsolated: !!u.onlyIsolated, mark, funding: parseFloat(c.funding)
+        };
+      });
+      HL = { ok: true, ts: Date.now(), byName, error: null };
+    } catch (e) {
+      HL = { ok: false, ts: Date.now(), byName: {}, error: (e && e.name === 'AbortError') ? 'timeout' : String(e && e.message || e) };
+    } finally {
+      if (timer) clearTimeout(timer);
+    }
+    setStatus();
+    return HL;
+  }
+
+  // ---------- interfaz ----------
+  function setStatus() {
+    if (typeof document === 'undefined') return;
+    const el = document.getElementById('hlStatus');
+    if (!el) return;
+    const hora = new Date().toLocaleTimeString('es-ES');
+    el.textContent = HL.ok
+      ? `HL ✓ ${Object.keys(HL.byName).length} mercados · ${hora}`
+      : `HL ✗ sin datos (${HL.error || '?'}) · solo cálculo Binance`;
+    el.style.color = HL.ok ? 'var(--long)' : 'var(--short)';
+  }
+
+  function injectUI() {
+    const css = document.createElement('style');
+    css.textContent = `
+      .hl-box{margin-top:10px;border:1px solid rgba(56,189,248,.35);border-radius:6px;overflow:hidden;background:rgba(56,189,248,.04);}
+      .hl-hdr{font-family:'Space Mono',monospace;font-size:9px;padding:5px 10px;display:flex;justify-content:space-between;color:var(--accent);}
+      .hl-warn{font-family:'Space Mono',monospace;font-size:9px;padding:4px 10px;border-top:1px solid var(--border);}
+      .hl-warn.bad{color:var(--short);} .hl-warn.warn{color:var(--warn);} .hl-warn.info{color:var(--muted);}
+      .hl-copy{width:100%;font-family:'Space Mono',monospace;font-size:10px;padding:6px;border:none;border-top:1px solid var(--border);backgrou
